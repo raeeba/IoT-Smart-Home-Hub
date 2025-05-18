@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Home Hub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+        <!--Scripts for javascript-->
+        <script src="{{ url_for('static', filename='javascript/script.js') }}"></script>
+
+        <!--Scripts for justgage-->
+        <script src="{{ url_for('static', filename='javascript/justgage/raphael-2.1.4.min.js')}}"></script>
+        <script src="{{ url_for('static', filename='javascript/justgage/justgage.js')}}"></script>
+  <style>
+    /* light mode styling */
+    :root {
+      --bg-color: #ffffff;
+      --bg-color-section: #e2e2e2;
+      --text-color: #000000;
+      --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      --card-text-color: #555;
+      --toggle-color: #ffde74;
+      --border-color: #00A2E8;
+      --bg-color-threshold: #dcf3fd;
+      --icon-color: #00A2E8;
+    }
+
+    /* dark mode styling */
+    .dark-mode { 
+      --bg-color: #121212;
+      --bg-color-section: #4d4c4c;
+      --text-color: #ffffff;
+      --box-shadow: 0 4px 8px rgba(209, 209, 209, 0.1);
+      --card-text-color: #bebebe;
+      --toggle-color: #7a78ee;
+      --bg-color-threshold: #858585;
+    }
+    
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center; 
+      position: relative;
+      background: var(--bg-color-section);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--box-shadow);
+      padding: 16px;
+      margin: 20px auto;
+      border-radius: 12px;
+      gap: 20px; 
+    }
+
+    .container.footer {
+      background: var(--bg-color-section);
+      align-items: right;
+      justify-content: right;  
+    }
+
+    .user-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .user-greeting, .user-name {
+      margin: 0; /** remove space between 'Welcome!' and <username>**/
+    }
+
+    .user-image img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--border-color);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .card {
+      position: relative;
+      background: var(--bg-color);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: var(--box-shadow);
+    }
+
+    .card.threshold {
+      background-color: var(--bg-color-threshold);
+      color: #333;
+    }
+
+    .card-content {
+      padding: 16px;
+    }
+
+    .card-title {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+    }
+
+    .card-text {
+      font-size: 0.95rem;
+      color: var(--card-text-color);
+    }
+
+    .card-text.threshold {
+      font-size: 1rem;
+      color: var(--card-text-color);
+      font-weight: bold;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .card-title i {
+      color: var(--border-color);
+      margin-right: 8px;
+    }
+
+    .card-img {
+      width: 150px;      
+      height: auto;      
+      display: block;
+      margin: 0 auto;
+    }
+
+    #temperature {
+      width: 100%,
+    }
+
+    #humidity {
+      width: 100%,
+    }
+
+    /** toggle styling **/
+    .toggle {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .toggle h3 {
+      margin: 0;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .slider {
+      background-color: var(--toggle-color);
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+      border-radius: 34px;
+      transition: 0.4s;
+    } 
+
+    .slider::before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--toggle-color);
+    }
+
+    input:checked + .slider::before {
+      transform: translateX(22px);
+    }
+
+    /** light intensity styling **/
+    .payload {
+      width: 50%;
+      height: 25px;
+      background: var(--border-color);
+      outline: none;
+    }
+    
+    .payload::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      background: var(--icon-color);
+      cursor: pointer;
+    }
+    
+    .payload::-moz-range-thumb {
+      width: 25px;
+      height: 25px;
+      background: var(--icon-color);
+      cursor: pointer;
+    }
+
+    input[type="range"].payload {
+      width: 100%;
+    }
+
+  </style>
+</head>
+<body>
+<!-- Header --> 
+<div class="container">
+    <div class="user-image"> <!-- Changes depending on RFID -->
+        <img src="../static/Pictures/users/mtl.jpg" id="user-image" alt="User Profile Picture">
+    </div>
+    <div class="user-text">
+        <h1 class="user-greeting">Welcome to your Smart Home Hub!</h1>
+        <span class="user-name" id="user-span">user</h2> <!-- Changes depending on RFID -->
+    </div>
+</div>
+
+<div class="grid">
+  <!-- Threshold Values --> 
+  <!-- User Info -->
+  <div class="card threshold">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="fas fa-person"></i>
+        User Profile
+      </h3>
+      <span class="card-text threshold" id="user-email-span">@email</h2>
+    </div>
+  </div>
+
+  <!-- Temperature -->
+  <div class="card threshold">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="fas fa-temperature-high"></i>
+        Temperature
+      </h3>
+      <p class="card-text">Your preferred temperature is: </p>
+      <span class="card-text threshold" id="temperature-span"> {{0.0}}°C </p>
+    </div>
+  </div>
+
+  <!-- Humidity -->
+  <div class="card threshold">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="fas fa-water"></i>
+        Humidity
+      </h3>
+      <p class="card-text">Your preferred humidity is: </p>
+      <span class="card-text threshold" id="humidity-span"> {{0.0}}°C </p>
+    </div>
+  </div>
+
+  <!-- Light Intensity -->
+  <div class="card threshold">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="far fa-lightbulb"></i>
+        Light Intensity
+      </h3>
+      <p class="card-text">Your preferred light intensity is: </p>
+      <span class="card-text threshold" id="light-span"> {{0.0}}°C </p>
+    </div>
+  </div>
+
+  <!-- Captured Values -->
+  <!-- Bluetooth -->
+  <div class="card">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="fab fa-bluetooth"></i>
+        Bluetooth 
+      </h3>
+      <p class="card-text">Nearby <b> Bluetooth </b> devices: </p>
+      <p class="card-text threshold"> {{0}}</p>
+      <br>
+      <p class="card-text">The <b> RSSI </b> threshold is: </p>
+      <p class="card-text threshold"> {{0.0}} </p>
+    </div>
+  </div>
+
+  <!-- Temperature -->
+  <div class="card">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="	fas fa-cloud-sun"></i>
+        Temperature & Humidity
+      </h3>
+      <!-- <p class="card-text">The current temperature is: </p> -->
+      <div id="temperature"></div>
+      <br>
+    <!-- <p class="card-text">The current humidity level is: </p> -->
+    <div id="humidity"></div>
+    </div>
+  </div>
+
+  <!-- Fan Status -->
+  <div class="card">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="fas fa-fan"></i>
+        Fan Status
+      </h3>
+      <!-- Fan Image --> 
+      <p class="card-text"> Fan status is currently: </p>
+      <img src="{{ url_for('static', filename='Pictures/fanOffImg.png')}}" alt="Fan Status" id="fan" class="card-img">
+
+      <script>
+        // Fan
+        function updateFanStatus() 
+        {
+           fetch('/get_fan_status')
+               .then(response => response.json())  // Parse the JSON response from getting the fan status (app.py)
+               .then(data => 
+               {
+                  var isFanOn = data.is_fan_on;
+
+                  console.log(isFanOn);
+                  console.log(typeof(isFanOn));
+
+                   if (isFanOn === "True") {
+                       document.getElementById("fan").src = "{{ url_for('static', filename='Pictures/fan-gif-76-blue-fan-moving.gif') }}";
+                   } else {
+                       document.getElementById("fan").src = "{{ url_for('static', filename='Pictures/fanOffImg.png') }}";
+                   }
+               })
+               .catch(error => {
+                   console.error('Error fetching fan status:', error);
+               });
+        }
+
+        setInterval(updateFanStatus, 2000); // Call every 2 seconds to update fan status
+      </script>
+      </div>
+    </div>
+
+
+  <!-- Light Intensity -->
+  <div class="card">
+    <div class="card-content">
+      <h3 class="card-title">
+        <i class="far fa-lightbulb"></i>
+        Light Intensity
+      </h3>
+      <p class="card-text" id="light">Light intensity is currently at: </p>
+      <br>
+
+      <!-- Light Image -->
+      <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+      <script> 
+          const socket = io('http://127.0.0.1:5000');
+
+          // LED
+          socket.on('led', function(data) { // Update LED info (image and slider value)
+              console.log("LED update received:", data);
+
+              const lightImage = document.getElementById('light-img');
+              const payloadValueField = document.getElementById('payload-value');
+
+              // Change light image depending on status
+              if (data.light === 'on') {
+                  lightImage.src = "../static/Pictures/light-bulb.png";
+              } else {
+                  lightImage.src = "../static/Pictures/lightbulb.png";
+              }
+
+              // Change slider value
+              payloadValueField.textContent = data.float_payload;
+              document.getElementById('myRange').value = data.float_payload;
+          });
+
+          // LED email
+          // Show dashboard email alert
+          let emailAlertShown = false;
+
+          socket.on('led_email_sent', function(data) { // Get email sent status (sent or not sent)
+            if (data.status === 'sent' && !emailAlertShown) { // Show email alert if sent 
+              alert(data.msg);
+              emailAlertShown = true;
+
+              setTimeout(() => {
+                emailAlertShown = false;
+              }, 60000);
+            }
+          });
+
+          // User info
+          socket.on('user', function(data) { // Update displayed user info depending on RFID tag
+            document.getElementById('user-span').textContent = data.first + " " + data.last;
+            document.getElementById('temperature-span').textContent = data.temperature + "°C";
+            document.getElementById('humidity-span').textContent = data.humidity + "%";
+            document.getElementById('light-span').textContent = data.light_intensity;
+            document.getElementById('user-email-span').textContent = data.email;
+
+            const profile_picture = document.getElementById('user-image');
+            profile_picture.src = "" + data.profile_picture + "";
+
+            const darkToggle = document.getElementById("darkToggle");
+            if (data.theme === 'dark-mode')
+            {
+              document.documentElement.classList.add('dark-mode');
+              darkToggle.checked = true;
+            } else {
+              document.documentElement.classList.remove('dark-mode');
+              darkToggle.checked = false;
+            }
+          });
+
+      </script>
+          <div id="light-slider">
+              <img src="{{ url_for('static', filename='Pictures/lightbulb.png') }}" alt="Light Status" id="light-img" class="card-img">
+              <br>
+              <p class="card-text threshold" id="payload-value"> 0.0 </p>
+              <input type="range" class="payload" id="myRange" min="0" max="4095" disabled>
+          </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Footer --> 
+<!-- Dark Mode Toggle styling -->
+<div class="container footer">
+  <label class="toggle">
+    <h3>Theme</h3>
+    <input type="checkbox" id="darkToggle">
+    <span class="slider"></span>
+  </label>
+</div>
+<script>
+document.getElementById('darkToggle').addEventListener('change', function () {
+    document.documentElement.classList.toggle('dark-mode', this.checked);
+});
+</script>
+
+</body>
+</html>
