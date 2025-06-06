@@ -1,5 +1,5 @@
 # IoT-Smart-Home-Hub
-Project for 420-531-VA IOT: Internet Of Things
+*This project was created as part of the **420-531-VA IOT: Internet Of Things** course.*
 
 ## Project Description
 For this project, we were tasked with creating a **smart home system** using a Raspberry Pi, sensors, motors and other components.  
